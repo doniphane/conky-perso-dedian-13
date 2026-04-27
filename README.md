@@ -1,16 +1,21 @@
-# Configuration Conky Moderne
+# Configuration Conky Moderne et Adaptative
 
 Une configuration Conky minimaliste et élégante pour monitorer votre système Linux.
 
-## 📸 Aperçu
+## ✨ Caractéristiques Principales
 
-Cette configuration affiche :
+**🔄 Détection Automatique :**
+- ✅ Nombre de cœurs CPU (affiche tous les cœurs disponibles)
+- ✅ Interface réseau active (WiFi, Ethernet, peu importe le nom)
+- ✅ Fonctionne sur n'importe quelle machine sans modification
+
+**📸 Affichage :**
 - 🕐 Horloge grande et lisible
 - 💻 Informations système (OS, kernel, uptime)
-- ⚙️ Utilisation CPU avec graphiques et détails par cœur
+- ⚙️ Utilisation CPU avec graphiques (adapté au nombre de cœurs)
 - 🧠 Mémoire RAM et Swap
 - 💾 Utilisation disque avec graphique I/O
-- 🌐 Statistiques réseau (vitesse upload/download)
+- 🌐 Statistiques réseau avec détection automatique de l'interface
 - 📊 Top 5 des processus actifs
 
 ## 🎨 Style
@@ -33,25 +38,41 @@ sudo pacman -S conky        # Arch Linux
 sudo apt install fonts-roboto
 ```
 
-## 🚀 Installation
+## 🚀 Installation Rapide
 
-1. Cloner ce dépôt :
+**Méthode automatique (recommandée) :**
 ```bash
 git clone https://github.com/votre-nom/conky-config.git
 cd conky-config
+./install.sh
 ```
 
-2. Copier la configuration :
+Le script d'installation va :
+- ✅ Vérifier que Conky est installé
+- ✅ Sauvegarder votre ancienne config (si elle existe)
+- ✅ Installer les fichiers de configuration
+- ✅ Configurer le démarrage automatique
+
+**Méthode manuelle :**
 ```bash
+# Copier les fichiers
 cp conky.conf ~/.conkyrc
-```
+mkdir -p ~/.config/conky
+cp conky-auto.lua ~/.config/conky/conky-auto.lua
 
-3. Lancer Conky :
-```bash
+# Lancer Conky
 conky
 ```
 
 ## ⚙️ Personnalisation
+
+### 🔍 Détection Automatique
+
+La configuration détecte automatiquement :
+- **CPU** : Tous les cœurs sont affichés automatiquement (2, 4, 8, 16 cœurs, etc.)
+- **Réseau** : L'interface active est détectée (eth0, enp0s3, wlan0, wlp3s0, etc.)
+
+**Aucune modification n'est nécessaire entre différentes machines !**
 
 ### Changer la position
 
@@ -121,12 +142,25 @@ X-GNOME-Autostart-enabled=true
 - Vérifiez que `conky-all` est installé (pas juste `conky`)
 - Essayez de changer `own_window_type` de `desktop` à `normal` ou `override`
 
-**Interface réseau affiche "Déconnecté" :**
-- Vérifiez le nom de votre interface avec `ip link`
-- Remplacez `enp0s3` par le nom correct dans la configuration
+**Interface réseau affiche "Aucune connexion réseau" :**
+- Vérifiez que vous êtes connecté : `ip addr`
+- Le script détecte automatiquement l'interface active
+- Si le problème persiste, vérifiez `/proc/net/route`
+
+**Pas tous les cœurs CPU affichés :**
+- Vérifiez que le script Lua est bien chargé : `ls ~/.config/conky/conky-auto.lua`
+- Testez avec : `cat /proc/cpuinfo | grep processor | wc -l`
 
 **Caractères manquants ou bizarres :**
 - Installez la police Roboto : `sudo apt install fonts-roboto`
+
+**Le script Lua ne fonctionne pas :**
+```bash
+# Vérifier que le fichier existe et est lisible
+ls -la ~/.config/conky/conky-auto.lua
+# Tester manuellement
+lua ~/.config/conky/conky-auto.lua
+```
 
 ## 📝 Licence
 
