@@ -40,21 +40,38 @@ sudo apt install fonts-roboto
 
 ## 🚀 Installation Rapide
 
-**Méthode automatique (recommandée) :**
+### Option 1 : Installation automatique Ubuntu/Debian (recommandé)
 ```bash
 git clone https://github.com/votre-nom/conky-config.git
 cd conky-config
+chmod +x install-ubuntu.sh
+./install-ubuntu.sh
+```
+Cette méthode installe tout automatiquement, y compris Conky et les polices.
+
+### Option 2 : Installation interactive (toutes distributions)
+```bash
+git clone https://github.com/votre-nom/conky-config.git
+cd conky-config
+chmod +x install.sh
 ./install.sh
 ```
 
 Le script d'installation va :
-- ✅ Vérifier que Conky est installé
+- ✅ Proposer d'installer Conky s'il n'est pas présent
 - ✅ Sauvegarder votre ancienne config (si elle existe)
 - ✅ Installer les fichiers de configuration
 - ✅ Configurer le démarrage automatique
 
-**Méthode manuelle :**
+### Option 3 : Installation manuelle
 ```bash
+# Installer Conky d'abord
+sudo apt install conky-all fonts-roboto  # Ubuntu/Debian
+# ou
+sudo dnf install conky                    # Fedora
+# ou
+sudo pacman -S conky                      # Arch
+
 # Copier les fichiers
 cp conky.conf ~/.conkyrc
 mkdir -p ~/.config/conky
