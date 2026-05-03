@@ -1,10 +1,10 @@
 #!/bin/bash
-# Installation rapide pour Fedora
-# Ce script installe tout automatiquement sans interaction
+# Installation rapide pour Fedora - VERSION CORRIGÉE
+# Ce script installe tout automatiquement avec diagnostic
 set -e
 
-echo "🚀 Installation automatique de Conky (Fedora)"
-echo "=============================================="
+echo "🚀 Installation automatique de Conky (Fedora - Version Corrigée)"
+echo "=================================================================="
 echo ""
 
 # Installer Conky si nécessaire
@@ -29,8 +29,26 @@ fi
 
 # Copier les fichiers
 echo "📁 Copie des fichiers de configuration..."
-cp conky-fedora.conf ~/.conkyrc
-cp conky-fedora.lua ~/.config/conky/conky-auto.lua
+
+# Utiliser le fichier CORRIGÉ si disponible, sinon l'original
+if [ -f "conky-fedora-FIXED.lua" ]; then
+    echo "   ✅ Utilisation de la version CORRIGÉE du script Lua"
+    cp conky-fedora-FIXED.lua ~/.config/conky/conky-auto.lua
+elif [ -f "conky-fedora.lua" ]; then
+    echo "   ⚠️  Utilisation de la version originale du script Lua"
+    cp conky-fedora.lua ~/.config/conky/conky-auto.lua
+else
+    echo "   ❌ Erreur: Aucun fichier .lua trouvé!"
+    exit 1
+fi
+
+if [ -f "conky-fedora.conf" ]; then
+    cp conky-fedora.conf ~/.conkyrc
+else
+    echo "   ❌ Erreur: conky-fedora.conf non trouvé!"
+    exit 1
+fi
+
 chmod 644 ~/.conkyrc
 chmod 644 ~/.config/conky/conky-auto.lua
 
@@ -48,20 +66,63 @@ NoDisplay=false
 EOF
 
 echo ""
-echo "✅ Installation terminée !"
-echo ""
-echo "🚀 Lancement de Conky..."
-killall conky 2>/dev/null || true
-sleep 1
-conky &
+echo "🔍 DIAGNOSTIC RÉSEAU:"
+echo "──────────────────────────────────────────────────"
+
+# Test de détection des interfaces
+interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -vE '^(lo|docker|veth|br-)' | sed 's/@.*//')
+if [ -z "$interfaces" ]; then
+    echo "⚠️  ATTENTION: Aucune interface réseau détectée!"
+    echo "   Vérifiez votre connexion réseau."
+else
+    echo "✅ Interfaces détectées:"
+    for iface in $interfaces; do
+        state=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "unknown")
+        ip_addr=$(ip -4 addr show $iface 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+        if [ "$state" = "up" ]; then
+            echo "   ✅ $iface → $state $([ -n "$ip_addr" ] && echo "($ip_addr)" || echo "(pas d'IP)")"
+        else
+            echo "   ⚠️  $iface → $state"
+        fi
+    done
+fi
 
 echo ""
-echo "✨ Conky est maintenant actif !"
+echo "✅ Installation terminée !"
 echo ""
-echo "Commandes utiles:"
+
+# Arrêter Conky existant
+killall conky 2>/dev/null || true
+sleep 1
+
+echo "🚀 Lancement de Conky..."
+conky &
+sleep 2
+
+# Vérifier que Conky tourne
+if pgrep -x conky > /dev/null; then
+    echo "✅ Conky est actif et fonctionnel !"
+else
+    echo "❌ Erreur: Conky ne s'est pas lancé correctement"
+    echo "   Lancez manuellement avec: conky -d"
+    echo "   pour voir les erreurs"
+fi
+
+echo ""
+echo "✨ Configuration terminée !"
+echo ""
+echo "📋 Commandes utiles:"
 echo "  - Arrêter:     killall conky"
 echo "  - Redémarrer:  killall conky && conky &"
-echo "  - Éditer:      nano ~/.conkyrc"
+echo "  - Debug:       conky -d"
+echo "  - Éditer conf: nano ~/.conkyrc"
+echo "  - Éditer Lua:  nano ~/.config/conky/conky-auto.lua"
 echo ""
-echo "Note Fedora: Si SELinux bloque Conky, exécutez:"
+echo "🔧 En cas de problème:"
+echo "  1. Vérifiez les interfaces: ip addr"
+echo "  2. Lancez le diagnostic: ./diagnostic-conky-network.sh"
+echo "  3. Regardez les logs: conky -d 2>&1 | grep -i error"
+echo ""
+echo "⚙️  Note Fedora/SELinux:"
+echo "  Si SELinux bloque Conky, exécutez:"
 echo "  sudo setsebool -P allow_execheap 1"

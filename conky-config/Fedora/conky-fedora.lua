@@ -1,27 +1,41 @@
--- Script Lua pour Conky - Version Fedora
+-- Script Lua pour Conky - Version Fedora (CORRIGÉ)
 -- Détection automatique des interfaces réseau et CPU
 
 function conky_show_network_fedora()
-    local handle = io.popen("ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$'")
+    -- Commande améliorée pour lister les interfaces (sans lo, docker, veth, br-)
+    local handle = io.popen("ip -o link show | awk -F': ' '{print $2}' | grep -vE '^(lo|docker|veth|br-)'")
     local interfaces = {}
     
-    for interface in handle:lines() do
-        table.insert(interfaces, interface)
+    if handle then
+        for interface in handle:lines() do
+            -- Nettoyer le nom de l'interface (enlever @... si présent)
+            local clean_iface = interface:match("^([^@]+)")
+            if clean_iface and clean_iface ~= "" then
+                table.insert(interfaces, clean_iface)
+            end
+        end
+        handle:close()
     end
-    handle:close()
     
     if #interfaces == 0 then
         return "${color2}│${color} Aucune interface détectée"
     end
     
     local result = ""
+    local active_count = 0
+    
     for i, iface in ipairs(interfaces) do
         -- Vérifier si l'interface est active
         local status_handle = io.popen("cat /sys/class/net/" .. iface .. "/operstate 2>/dev/null")
-        local status = status_handle:read("*l")
-        status_handle:close()
+        local status = ""
+        if status_handle then
+            status = status_handle:read("*l") or ""
+            status_handle:close()
+        end
         
         if status == "up" then
+            active_count = active_count + 1
+            
             -- Nom de l'interface avec indicateur
             result = result .. "${color2}│ " .. iface .. ":${color} ${addr " .. iface .. "}\n"
             
@@ -34,7 +48,7 @@ function conky_show_network_fedora()
             result = result .. "${color1}│${color}  ${upspeedgraph " .. iface .. " 25,298 294172 f17a65 -t}\n"
             
             -- Séparateur entre interfaces
-            if i < #interfaces then
+            if active_count < #interfaces then
                 result = result .. "${color2}│${color}\n"
             end
         end
