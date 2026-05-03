@@ -1,21 +1,24 @@
--- Script Lua pour Conky - Version Fedora (CORRIGÉ)
--- Détection automatique des interfaces réseau et CPU
+-- Script Lua pour Conky - Version Fedora ULTRA-SIMPLIFIÉE
+-- Compatible avec tous les environnements Lua de Conky
 
 function conky_show_network_fedora()
-    -- Commande améliorée pour lister les interfaces (sans lo, docker, veth, br-)
-    local handle = io.popen("ip -o link show | awk -F': ' '{print $2}' | grep -vE '^(lo|docker|veth|br-)'")
-    local interfaces = {}
+    -- Commande simple et robuste
+    local handle = io.popen("ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -vE '^(lo|docker|veth|br-)' | cut -d'@' -f1")
     
-    if handle then
-        for interface in handle:lines() do
-            -- Nettoyer le nom de l'interface (enlever @... si présent)
-            local clean_iface = interface:match("^([^@]+)")
-            if clean_iface and clean_iface ~= "" then
-                table.insert(interfaces, clean_iface)
-            end
-        end
-        handle:close()
+    if not handle then
+        return "${color2}│${color} Erreur de détection"
     end
+    
+    local interfaces = {}
+    local line = handle:read("*l")
+    
+    while line do
+        if line ~= "" then
+            interfaces[#interfaces + 1] = line
+        end
+        line = handle:read("*l")
+    end
+    handle:close()
     
     if #interfaces == 0 then
         return "${color2}│${color} Aucune interface détectée"
@@ -24,10 +27,13 @@ function conky_show_network_fedora()
     local result = ""
     local active_count = 0
     
-    for i, iface in ipairs(interfaces) do
+    for i = 1, #interfaces do
+        local iface = interfaces[i]
+        
         -- Vérifier si l'interface est active
         local status_handle = io.popen("cat /sys/class/net/" .. iface .. "/operstate 2>/dev/null")
         local status = ""
+        
         if status_handle then
             status = status_handle:read("*l") or ""
             status_handle:close()
@@ -48,7 +54,7 @@ function conky_show_network_fedora()
             result = result .. "${color1}│${color}  ${upspeedgraph " .. iface .. " 25,298 294172 f17a65 -t}\n"
             
             -- Séparateur entre interfaces
-            if active_count < #interfaces then
+            if i < #interfaces then
                 result = result .. "${color2}│${color}\n"
             end
         end
@@ -63,17 +69,20 @@ end
 
 function conky_show_cpus()
     -- Détection automatique du nombre de CPUs
-    local handle = io.popen("nproc")
-    local cpu_count = tonumber(handle:read("*l"))
-    handle:close()
+    local handle = io.popen("nproc 2>/dev/null")
     
-    if cpu_count == nil or cpu_count == 0 then
-        cpu_count = 4  -- Valeur par défaut
+    if not handle then
+        return "${color2}│${color} Erreur CPU"
     end
     
+    local cpu_count = tonumber(handle:read("*l")) or 4
+    handle:close()
+    
     local result = ""
-    for i = 1, math.min(cpu_count, 16) do
-        result = result .. "${color2}CPU" .. i .. ":${color} ${cpu cpu" .. i .. "}% ${cpubar cpu" .. i .. " 8}\n"
+    for i = 1, cpu_count do
+        if i <= 16 then
+            result = result .. "${color2}CPU" .. i .. ":${color} ${cpu cpu" .. i .. "}% ${cpubar cpu" .. i .. " 8}\n"
+        end
     end
     
     return result
@@ -81,20 +90,31 @@ end
 
 -- Fonction pour obtenir la distribution
 function conky_get_distro()
-    local handle = io.popen("cat /etc/fedora-release 2>/dev/null || echo 'Fedora Linux'")
-    local distro = handle:read("*l")
+    local handle = io.popen("cat /etc/fedora-release 2>/dev/null")
+    
+    if not handle then
+        return "Fedora Linux"
+    end
+    
+    local distro = handle:read("*l") or "Fedora Linux"
     handle:close()
-    return distro or "Fedora Linux"
+    
+    return distro
 end
 
 -- Fonction pour obtenir le nombre de mises à jour disponibles (DNF)
 function conky_get_updates()
-    local handle = io.popen("dnf check-update 2>/dev/null | grep -v '^$' | grep -v 'Last metadata' | wc -l")
+    local handle = io.popen("dnf check-update 2>/dev/null | grep -v '^$' | grep -v 'Last metadata' | wc -l 2>/dev/null")
+    
+    if not handle then
+        return "N/A"
+    end
+    
     local updates = tonumber(handle:read("*l"))
     handle:close()
     
-    if updates and updates > 0 then
-        return "Updates: " .. (updates - 1)  -- -1 pour exclure la ligne d'en-tête
+    if updates and updates > 1 then
+        return "Updates: " .. (updates - 1)
     else
         return "System up to date"
     end
